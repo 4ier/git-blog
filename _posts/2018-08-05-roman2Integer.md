@@ -1,10 +1,11 @@
 ---
 layout: post
-title: roman2Integer
+title: Solution for Roman to Integer
 ---
-# Solution for [Roman to Integer](https://leetcode.com/problems/roman-to-integer/description/)
+[Roman to Integer](https://leetcode.com/problems/roman-to-integer/description/)
 
-## 倒序遍历求值
+- 倒序遍历求值
+
 罗马数字存在以下特征：
 
 | key | value |
@@ -23,7 +24,8 @@ title: roman2Integer
 | CM  | 900   |
 | M   | 1000  |
 
-因此可以通过倒序遍历，判断当前字母和前一个字母的大小，求和时对应加上/减去该字母代表的数值，最终累加得到结果
+因此可以通过倒序遍历，判断当前字母和前一个字母的大小，求和时对应`+`/`-`当前字母代表的数值，最终累加得到结果：
+
 ```python
 class Solution(object):
     def romanToInt(self, s):
