@@ -1,2 +1,15 @@
-baseurl: /git-blog
-encoding: utf-8
+# Dependencies
+markdown: redcarpet
+pygments: true
+
+# Permalinks
+permalink: pretty
+
+author:
+  name: '4ier'
+  url: https://twitter.com/yangfourier
+
+paginate: 5
+
+# Custom vars
+version: 2.0.0
