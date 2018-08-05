@@ -1,26 +1,26 @@
-baseurl: /git-blog
-
 # Dependencies
-markdown:         redcarpet
-pygments:         true
+markdown:            redcarpet
+highlighter:         pygments
+plugins:             [jekyll-paginate]
 
 # Permalinks
-permalink:        pretty
+permalink:           pretty
 
 # Setup
-title:            Lanyon
-tagline:          'A Jekyll theme'
-description:      'A reserved <a href="http://jekyllrb.com" target="_blank">Jekyll</a> theme that places the utmost gravity on content with a hidden drawer. Made by <a href="https://twitter.com/mdo" target="_blank">@mdo</a>.'
-url:              http://lanyon.getpoole.com
+title:               4ier's Blog
+description:         '三月的烟雨飘摇的南方，你坐在你空空的米店'
+baseurl:             /git-blog
 
 author:
-  name:           'Mark Otto'
-  url:            https://twitter.com/mdo
+  name:              4ier
+  email:             yang.fourier@gmail.com
 
-paginate:         5
+paginate:            5
 
 # Custom vars
-version:          2.0.0
+version:             2.0.0
 
 github:
-  repo:           https://github.com/poole/lanyon
+  repo:              https://github.com/4ier/
+
+twitter:             https://twitter.com/yangfourier
