@@ -7,6 +7,7 @@ title: roman2Integer
 
 ## 倒序遍历求值
 罗马数字存在以下特征：
+
 | key | value |
 | --- | ----- |
 | I   | 1     |
@@ -22,6 +23,7 @@ title: roman2Integer
 | D   | 500   |
 | CM  | 900   |
 | M   | 1000  |
+
 因此可以通过倒序遍历，判断当前字母和前一个字母的大小，求和时对应加上/减去该字母代表的数值，最终累加得到结果
 ```python
 class Solution(object):
