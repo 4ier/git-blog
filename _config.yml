@@ -1,4 +1,4 @@
-baseurl: http://4ier.github.io/git-blog/
+baseurl: https://4ier.github.io/git-blog/
 
 # Dependencies
 markdown:         redcarpet
