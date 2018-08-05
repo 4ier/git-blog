@@ -1,3 +1,5 @@
+baseurl: /git-blog
+
 # Dependencies
 markdown:         redcarpet
 pygments:         true
