@@ -32,7 +32,7 @@ return len(nums)
 
 在遍历时使用下标`i`控制遍历过程，如果匹配到了要删除的元素，下标`i`的值不自增，可以解决上面描述的遍历问题
 
-- 解决方案1：使用数组的`remove()`方法
+- 解决方案2：使用数组的`remove()`方法
 
 ```python
 for i in range(nums.count(val)):
