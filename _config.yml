@@ -24,3 +24,5 @@ github:
   repo:              https://github.com/4ier/
 
 twitter:             https://twitter.com/yangfourier
+
+excerpt_separator:  '<!-- more -->'

@@ -25,6 +25,8 @@ title: Solution for Roman to Integer
 | CM  | 900   |
 | M   | 1000  |
 
+<!-- more -->
+
 因此可以通过倒序遍历，判断当前字母和前一个字母的大小，求和时对应`+`/`-`当前字母代表的数值，最终累加得到结果：
 
 ```python

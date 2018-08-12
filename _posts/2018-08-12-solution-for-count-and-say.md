@@ -19,6 +19,8 @@ title: Solution for Count and Say
 10.     13211311123113112211
 ```
 
+<!-- more -->
+
 上一个序列`n`中所有元素重复次数`count`拼上这个元素`ele`
    
 例如
