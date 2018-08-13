@@ -11,7 +11,7 @@ title: Solution for Maximum Subarray
 
 从题目描述来看，可以使用穷举的方式求助所有子数组的和，比较最大值返回即可，代码实现如下：
 
-<!--more-->
+<!-- more -->
 
 ```python
 def maxSubArray(self, nums):  #复杂度为`o(n^2)`
