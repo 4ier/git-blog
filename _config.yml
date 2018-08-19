@@ -1,6 +1,6 @@
 # Dependencies
 markdown:            kramdown
-highlighter:         pygments
+highlighter:         rouge
 plugins:             [jekyll-paginate]
 
 # Permalinks
@@ -8,7 +8,7 @@ permalink:           pretty
 
 # Setup
 title:               4ier's Blog
-description:         '三月的烟雨飘摇的南方，你坐在你空空的米店'
+description:         '爱与自由'
 baseurl:             /git-blog
 
 author:
