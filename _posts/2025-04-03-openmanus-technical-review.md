@@ -6,7 +6,7 @@ categories: [技术研究]
 tags: [OpenManus, AI, 开源]
 ---
 
-# OpenManus 技术调研报告
+<!-- more -->
 
 ## 项目概述
 

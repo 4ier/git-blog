@@ -5,8 +5,12 @@ date: 2025-04-03
 categories: [技术研究]
 tags: [MCP, 认知架构]
 
+---
+
 ## 一、项目概览
 - Break down complex problems into manageable steps
+<!-- more -->
+
 - Revise and refine thoughts as understanding deepens
 - Branch into alternative paths of reasoning
 - Adjust the total number of thoughts dynamically

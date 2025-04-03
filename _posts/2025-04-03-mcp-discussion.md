@@ -6,6 +6,8 @@ categories: [技术研究]
 tags: [MCP, 协议, AI]
 ---
 
+<!-- more -->
+
 在与 GPT-4o 的对话中，我们探讨了 MCP（Model Context Protocol）的设计初衷及其在实际应用中的演变。以下是对话的核心观点总结：
 
 ## MCP 的初衷：数据“注入”协议
