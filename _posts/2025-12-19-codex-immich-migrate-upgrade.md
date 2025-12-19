@@ -1,168 +1,177 @@
 ---
 layout: post
-title: "用 Codex CLI 远程迁移与升级 Immich：从外挂盘到本地阵列（含自启自愈）"
+title: "用 Codex CLI 迁移 + 升级 Immich：旧 NAS → 新 NAS（v1.131.x 跨到 v2.3.1 的升级路径与 break 处理）"
 date: 2025-12-19
 categories: [运维]
-tags: [Immich, Codex, Docker, rsync, systemd, NAS]
+tags: [Immich, Codex, Docker, PostgreSQL, rsync, 升级]
 ---
 
-这是一篇带一点“复盘味道”的运维记录：我把 Immich 的媒体库和数据库从外挂盘迁移到 NAS 的本地阵列，并在切换后完成版本升级与开机自启/异常自愈。
+这次我把 Immich 从**旧 NAS**迁移到**新 NAS**，同时完成一次“跨大版本升级”：从 `v1.131.x` 最终跑到 `v2.3.1`。
 
-本文已对域名、IP、口令等敏感信息做脱敏处理；命令里的路径/变量请按你的实际环境替换。
+真正难的不是拷贝文件，而是：
+
+- 媒体库 TB 级且小文件极多，`rsync` 很容易因为“遍历/校验”显得特别慢；
+- `v1.131.x → v2.x` **不能直接升级**，中间存在官方要求的 upgrade path（以及 break 变更）。
+
+我用 Codex CLI 当作远程运维搭档，把这条长链路任务拆成可验证、可回滚的步骤推进完成。
+
+> 已对域名、IP、口令、Token 等敏感信息脱敏；命令中的路径/变量请按你环境替换。
 
 <!-- more -->
 
-## 背景：为什么要迁移
+## 1) 目标
 
-- 外挂盘 I/O 慢、延迟高，影响导入/缩略图/转码等后台任务
-- 希望把**媒体库**和**数据库**都落到本地阵列（SSD/RAID）以获得更稳定的吞吐
-- 迁移过程中尽量缩短停机窗口
+- 从旧 NAS 迁移到新 NAS：
+  - 媒体目录（library/upload/thumbs/encoded-video/...）
+  - 数据库（PostgreSQL）
+- 在新 NAS 上最终运行版本：`v2.3.1`
+- 缩短停机窗口（优先让服务先恢复，再做补齐/清理）
+- 迁移完成后：开机自启 + 异常自愈
 
-## 这次用 Codex CLI 做了什么
+## 2) 为什么 v1.131.x 不能直接升级到 v2.x
 
-Codex CLI 的价值点不是“写代码”，而是把它当作一个**远程运维搭档**：
+我一开始也以为“改镜像 tag，`docker compose up -d`”就完事，后来才确认：
 
-- 通过 SSH 在目标机器上执行命令、收集状态、排查卡点
-- 把迁移拆成可控步骤：预同步、停机切换、验证、再升级
-- 把最终结果固化为可持续运维形态：持久化 compose + systemd 自启 + watchdog 自愈
+- Immich 的 schema 升级路径有约束：**不能从 `v1.131.x` 直接跳到 `v2.x`**。
+- 官方要求必须先在 `v1.132.0 ~ v1.136.0` 范围内**成功启动一次**，完成旧 schema 的升级（否则会触发类似 *Invalid upgrade path / TypeORM upgrade* 的错误）。
 
-> 关键是：它能持续追踪上下文（迁移路径、容器状态、日志）并推进到“真的能用”。
+因此正确路线是：
 
-## 迁移策略：先媒体不停机预同步，再停机切换
+- `v1.131.x` → **`v1.132.3`（过桥版本，启动一次）** → `v2.3.1`
 
-### 1) 媒体库：先预同步（不停机）
+> 过桥版本我选 `v1.132.3`，原因是稳定且符合官方 upgrade path 要求。
 
-媒体目录通常是 TB 级别，且文件数量非常多。
+## 3) 迁移总体策略（我认为最稳的一套）
 
-我的建议策略是：
+把迁移拆为三条线：
 
-- 先做一次“长时间预同步”（不停机）把大部分数据搬过去
-- 切换窗口只做必要动作（例如短暂停机后补一小段增量、或直接切换路径）
+1. **媒体库（TB 级）**：先预同步（不停机），切换窗口避免做耗时的全量校验/删除。
+2. **数据库（强一致）**：先 dump 备份兜底；再 restore/离线拷贝实现一致切换。
+3. **升级链路**：严格按 upgrade path 走（`v1.132.3` 过桥启动一次）。
 
-预同步示例（不含 `--delete`，只做镜像式复制）：
+这样能保证：
+
+- 即使媒体库还在补齐，服务也能尽快恢复可用；
+- 数据库有 dump 可回滚；
+- 升级不会卡在不可逆的中间态。
+
+## 4) 媒体库迁移：预同步（不停机）
+
+媒体库的痛点：文件量巨大，`rsync` 经常“前面数字几乎不动但 elapsed 在涨”，本质是它在 **scan/compare（ir-chk/to-chk）**。
+
+建议：
+
+- 先预同步：把大部分数据搬到新 NAS（不停机）
+- 中断可续传：用 `--partial/--partial-dir`
+
+示例：
 
 ```bash
 rsync -a --info=progress2 \
   --partial --partial-dir=.rsync-partial \
   --modify-window=2 \
-  "$SRC_MEDIA/" "$DST_MEDIA/"
+  "$OLD_MEDIA/" "$NEW_MEDIA/"
 ```
 
-### 2) 最终对齐（可选）：`rsync --delete` 的意义
+### 是否要做最终 `rsync --delete`？
 
-所谓“最终媒体 rsync（--delete）”，目的只有一个：让目标目录**严格等于**源目录。
+“最终 rsync（带 `--delete`）”的意义是让目标端严格等于源端（包含删除）。
 
-- 优点：保证一致性（含删除）
-- 缺点：可能非常慢（尤其是海量小文件 + 目录树校验）
+但现实是：
 
-这次最终我选择了一个更务实的“方案 B”：**跳过最终 `--delete` 对齐，直接切换到本地阵列运行**。
+- 这一步可能非常慢，尤其是海量小文件；
+- 它会拉长停机窗口。
 
-后续如果你担心漏文件，可以在线补一次“只补齐、不删除”的同步：
+我最终采用了一个更务实的方案（我称它为“方案 B”）：
+
+- **不做最终 `--delete` 对齐，直接切换到新 NAS 的本地阵列路径运行**。
+- 后续如果担心漏文件，用在线补齐（不删除、不覆盖）：
 
 ```bash
 rsync -a --ignore-existing --modify-window=2 \
-  "$SRC_MEDIA/" "$DST_MEDIA/"
+  "$OLD_MEDIA/" "$NEW_MEDIA/"
 ```
 
-> 这个动作不会删目标文件，也不会覆盖已有文件，风险低。
+## 5) 数据库迁移：dump 兜底 + restore/离线拷贝
 
-### 3) 数据库：停机窗口做离线拷贝
-
-数据库目录不大（通常几十 GB 以内），但一致性更重要。
-
-建议：
-
-- 切换前做一次 `pg_dump` 备份（即使最终不回滚，也能兜底）
-- 停机后再拷贝数据库数据目录（或恢复 dump 到新目录）
-
-备份示例：
+这一步我强烈建议：不管你最终怎么迁移 DB（restore 或拷贝数据目录），都先做一次 dump：
 
 ```bash
 docker exec immich_postgres pg_dump -U postgres -d immich -Fc > immich-backup.dump
 ```
 
-## 运维落地：避免“目录丢失”和“开机不起来”
+然后在新 NAS 的目标数据库里 restore（示意）：
 
-### 1) 把 compose 目录放到持久化存储
+```bash
+docker exec immich_postgres pg_restore -U postgres -d immich \
+  --clean --if-exists --no-owner /tmp/immich.dump
+```
 
-一些 NAS 平台的默认工作目录并不可靠（重启/升级/切换 shell 环境后路径可能找不到）。
+这样你能：
 
-做法：
+- 随时回到“可用”的 dump 时间点；
+- 降低“离线拷贝数据目录/权限/UID 不匹配”带来的坑。
 
-- 把 `docker-compose.yml`、`.env`、`Caddyfile` 固定放到一个持久化目录（例如数据阵列）
-- 如有旧脚本依赖 `/opt/immich`，用软链接兼容
+## 6) 过桥升级：v1.131.x → v1.132.3（必须成功启动一次）
 
-目录示例：
+关键动作不是“升级”，而是“**让 v1.132.3 成功启动并跑完它该跑的迁移**”。
 
-- `.../immich/compose/`
-- `/opt/immich -> .../immich/compose`
+验证点：
 
-### 2) systemd 开机自启（推荐）
+- `docker compose ps` 全部健康
+- Immich API 能返回版本信息
+- 日志里没有 upgrade path / migration 错误
 
-Docker 本身可能开机启动，但这不代表你的 compose stack 会自动起来。
+这一步完成后，再继续升级到 `v2.3.1`。
 
-一个可靠的方式是增加 systemd unit：
+## 7) 升到 v2.3.1：你会遇到的 break 变更
 
-- `immich-compose.service`：开机执行 `docker compose up -d`
+从 v1 到 v2，运维层面我踩到/需要处理的变化包括：
 
-### 3) 异常自愈：restart policy + watchdog
+- 媒体挂载点统一为 `/data`（v2 compose 里通常是 `- ${UPLOAD_LOCATION}:/data`）
+- Redis 替换为 Valkey（镜像与服务名不同）
+- PostgreSQL 镜像与扩展版本变化（官方提供 `immich-app/postgres:14-vectorchord...`）
+- 版本号建议固定到具体版本：`IMMICH_VERSION=v2.3.1`（避免浮动 tag）
 
-两层防护：
+实操上我做了两件事让升级更稳：
 
-- Compose 内 `restart: always`（容器异常退出会自动拉起）
-- systemd timer 周期性 watchdog：发现 `unhealthy/exited` 就重启
+1) compose 与 `.env` 固定放到持久化目录（例如本地阵列），避免环境切换后“目录没了”。
+2) 每个阶段都做“可验证输出”：`ps`、`curl /api/server/version`、`docker logs`。
 
-watchdog 里建议加 `--no-recreate`：避免在升级过程中和人工操作“打架”。
+## 8) 自启与自愈：把“一次性迁移”固化成“长期可运维”
 
-## TLS：用现有证书做端口级 HTTPS
+迁移完成不等于结束；我最后补齐了运维能力：
 
-如果 NAS 已经有一套自动签发的证书体系（例如系统组件占用了 80/443），也可以走折中方案：
+- systemd 开机自启：开机执行 `docker compose up -d`
+- 容器 `restart: always`
+- watchdog 定时检查：发现 `unhealthy/exited` 自动重启
 
-- Immich 只在本机监听一个 HTTP 端口（例如 `127.0.0.1:2284`）
-- 用一个反代容器（Caddy/Nginx）对外监听 `:2283`，做 TLS 终止并反代到 Immich
+这样即使 NAS 重启或某个容器偶发异常，也能自动拉起恢复。
 
-这样对外仍然是：
+## 9) 额外插曲：代理（Clash）导致浏览器访问异常
 
-- `https://<your-domain>:2283/`
+迁移完成后我遇到过“服务端正常但浏览器 TLS 报错”的情况，最终发现根因不在 Immich：
 
-## 版本升级：固定版本号 + 可回滚备份
+- 内网域名可能解析到内网地址（尤其是 IPv6 ULA）
+- 开启代理后 DNS/fake-ip/路由导致解析或流量走偏
 
-我把版本号固定在 `.env`（例如 `IMMICH_VERSION=vX.Y.Z`），升级步骤基本是：
+经验是：先判断是“解析错”还是“路由错”，再针对性做 DIRECT / fake-ip-filter。
 
-1. 先 dump 备份数据库
-2. 修改版本号
-3. `docker compose pull && docker compose up -d`
-4. 用 `/api/server/version` 校验版本
+## 10) Codex CLI 的使用体感
 
-回滚也很直接：把版本号改回去再 `up -d`。
+我觉得 Codex 在这类任务里最有价值的是：
 
-## 真实踩坑：代理（Clash）导致浏览器打不开 HTTPS
+- 长任务能保持上下文，把步骤推进到“真的可用”
+- 会主动补齐验证与排障（端口、健康、挂载、日志）
+- 适合把迁移最后一公里变成可持续运维形态（自启/自愈/回滚点）
 
-迁移完成后出现过一种“服务端明明正常，但浏览器访问报 TLS 错误”的情况，根因是：
+如果你也要做类似迁移，我建议按这个顺序：
 
-- 自定义域名在内网 DNS 下解析到内网 IPv6（例如 ULA 网段）
-- Clash 开启后 DNS/fake-ip/代理链路导致解析或流量走偏
-
-结论：
-
-- 对内网网段和该域名设置 **DIRECT**
-- 必要时关闭该域名的 fake-ip（或做 fake-ip filter）
-
-具体规则写法因 Clash 内核/客户端差异很大，这里不展开，核心是：**让内网地址直连且解析不被污染**。
-
-## 总结：Codex 帮我把“运维动作”变成“可交付结果”
-
-这次体验最有价值的点：
-
-- 迁移不是单一命令，而是一组“可回滚、可验证”的步骤
-- 做完切换不算完，必须把运行方式固化（自启、自愈、验证路径）
-- 出现异常时能快速定位（DNS/代理、容器健康、端口监听、挂载路径）
-
-如果你也要做 Immich 迁移，我建议按这个顺序：
-
-1. 媒体预同步（不停机）
-2. 数据库备份（dump）
-3. 停机窗口切换路径/数据库目录
-4. 验证端口、API、容器健康
-5. 再考虑版本升级
+1) 先确认 upgrade path（尤其跨大版本）
+2) dump 兜底
+3) 媒体预同步（不停机）
+4) 过桥版本启动一次（`v1.132.x`）
+5) 升到目标版本（`v2.3.1`）
+6) 切换目录到本地阵列
+7) 固化自启/自愈
 
