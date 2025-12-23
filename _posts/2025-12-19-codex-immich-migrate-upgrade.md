@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "Vibe DevOps：Codex陪跑迁移升级"
+title: "Vibe DevOps实践: 使用Codex升级Immich"
 date: 2025-12-19
 categories: [运维]
 tags: [Immich, Codex, 迁移, 升级, Docker, PostgreSQL]
