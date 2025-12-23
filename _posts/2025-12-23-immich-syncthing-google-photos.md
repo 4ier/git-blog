@@ -1,12 +1,12 @@
 ---
 layout: post
-title: "把 NAS 相册一键喂给 Google Photos：Immich + Syncthing 的省心备份流水线"
+title: "Pixel机无限备份"
 date: 2025-12-23
 categories: [运维]
 tags: [Immich, Syncthing, Google Photos, Android, NAS, Caddy, systemd]
 ---
 
-这篇记录一条把 **Immich 原图 → 手机 → Google Photos** 打通的流水线方案。重点是：**让 Google Photos 能“看懂”目录**，并且**自动更新、不额外占 NAS 大量空间**。
+这篇记录一条用**闲置 Pixel 4 XL 当中转**的备份流水线：把 **Immich 原图 → Pixel 4 XL → Google Photos** 打通。重点是：**用旧机实现无限量备份（以账号/机型政策为准）**，并且**目录可识别、自动更新、不额外占 NAS 大量空间**。
 
 > 已对域名、IP、设备 ID、证书路径等敏感信息脱敏；路径与变量请按你环境替换。
 
@@ -25,7 +25,7 @@ tags: [Immich, Syncthing, Google Photos, Android, NAS, Caddy, systemd]
 1. NAS 上运行 Syncthing（Docker），通过 HTTPS 访问管理界面。
 2. 生成一个“可读导出视图”（按日期目录），**用硬链接**避免复制大文件。
 3. systemd 定时任务**每小时更新导出视图**。
-4. Syncthing 分享导出视图（Send Only）到手机（Receive Only）。
+4. Syncthing 分享导出视图（Send Only）到 **Pixel 4 XL**（Receive Only）。
 5. Google Photos 只需要备份 **一个清晰目录**。
 
 ## 3) 导出视图（硬链接）
