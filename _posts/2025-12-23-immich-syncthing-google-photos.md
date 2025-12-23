@@ -1,12 +1,12 @@
 ---
 layout: post
-title: "Pixel机无限备份"
+title: "闲置机二级备份"
 date: 2025-12-23
 categories: [运维]
 tags: [Immich, Syncthing, Google Photos, Android, NAS, Caddy, systemd]
 ---
 
-这篇记录一条用**闲置 Pixel 4 XL 当中转**的备份流水线：把 **Immich 原图 → Pixel 4 XL → Google Photos** 打通。重点是：**用旧机实现无限量备份（以账号/机型政策为准）**，并且**目录可识别、自动更新、不额外占 NAS 大量空间**。
+这篇记录一条**用闲置手机做二级备份**的完整方案：为家里 NAS 上部署的 Immich 建立一条 **Immich 原图 → 闲置手机 → Google Photos** 的备份通道。重点放在**整套方案的实现路径**（已脱敏），包括目录可识别、自动更新、硬链接节省空间等关键细节。
 
 > 已对域名、IP、设备 ID、证书路径等敏感信息脱敏；路径与变量请按你环境替换。
 
@@ -20,13 +20,13 @@ tags: [Immich, Syncthing, Google Photos, Android, NAS, Caddy, systemd]
 - Android 上 `Download` 目录常常不被识别，**`DCIM`/`Pictures` 更稳**。
 - `upload` 目录大小可能远小于“Immich 总占用”，因为后者包含缩略图/转码/外部库。
 
-## 2) 方案概览
+## 2) 二级备份方案概览
 
 1. NAS 上运行 Syncthing（Docker），通过 HTTPS 访问管理界面。
 2. 生成一个“可读导出视图”（按日期目录），**用硬链接**避免复制大文件。
 3. systemd 定时任务**每小时更新导出视图**。
-4. Syncthing 分享导出视图（Send Only）到 **Pixel 4 XL**（Receive Only）。
-5. Google Photos 只需要备份 **一个清晰目录**。
+4. Syncthing 分享导出视图（Send Only）到 **闲置手机**（Receive Only）。
+5. Google Photos 只需要备份 **一个清晰目录**，完成二级备份闭环。
 
 ## 3) 导出视图（硬链接）
 
