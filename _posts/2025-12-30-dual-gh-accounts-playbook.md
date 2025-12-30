@@ -1,6 +1,6 @@
 ---
 layout: post
-title: "双号协作法"
+title: "gh-cli多号进阶"
 date: 2025-12-30
 categories: [devops]
 tags: [GitHub, SSH, gh, multi-account, automation, AI]
