@@ -66,6 +66,56 @@ Host github.com
 
 核心规则只要一条：remote 包含 `github-company` 就切公司账号，否则切个人账号。把切换逻辑挂到 PowerShell prompt 或 zsh 的 `chpwd` hook，agent 进入仓库就自动拥有正确身份。
 
+## PowerShell 自动切换（Windows）
+
+把下面这段放进 `$PROFILE`：
+
+```powershell
+function Update-GhAccount {
+    try {
+        $remote = git config --get remote.origin.url 2>$null
+        if (-not $remote) { return }
+
+        if ($remote -match "github-company") {
+            gh auth switch --hostname github.com --user company-user | Out-Null
+        } else {
+            gh auth switch --hostname github.com --user personal-user | Out-Null
+        }
+    } catch {}
+}
+
+function prompt {
+    Update-GhAccount
+    "PS $($executionContext.SessionState.Path.CurrentLocation)> "
+}
+```
+
+## zsh 自动切换（macOS / Linux）
+
+把下面这段放进 `~/.zshrc`：
+
+```zsh
+function gh_auto_switch() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    return
+  fi
+
+  local remote
+  remote=$(git config --get remote.origin.url 2>/dev/null)
+  [[ -z "$remote" ]] && return
+
+  if [[ "$remote" == *"github-company"* ]]; then
+    gh auth switch --hostname github.com --user company-user >/dev/null 2>&1
+  else
+    gh auth switch --hostname github.com --user personal-user >/dev/null 2>&1
+  fi
+}
+
+autoload -U add-zsh-hook
+add-zsh-hook chpwd gh_auto_switch
+gh_auto_switch
+```
+
 ## 不止 GitHub：GitLab / Gitea 也能纳入
 
 - gh 原生支持 GitHub.com 与 GitHub Enterprise Server。
