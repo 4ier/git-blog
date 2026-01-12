@@ -3,6 +3,8 @@ layout: post
 title: "Agent Sandbox 平台分析报告"
 ---
 
+![Agent Sandbox Platform Analysis](/git-blog/public/sandbox.jpg)
+
 ## 目录
 1. [平台特性对比表](#平台特性对比表)
 2. [Genspark (E2B基础)](#genspark-e2b基础)
