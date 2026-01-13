@@ -107,6 +107,53 @@ MCP（Model Context Protocol）已经被 Claude 原生支持。如果把 Skill �
 
 这是一个 trade-off，不是完美解。但在当前的技术条件下，这可能是最务实的路径。
 
+## 另一个 Trade-off：Context 膨胀
+
+MCP 方案还有一个容易被忽视的问题：**工具定义会吃掉大量 Context Window**。
+
+### 问题有多严重？
+
+根据社区讨论的实际数据：
+
+| 指标 | 数值 |
+|------|------|
+| 每个工具的 Schema 开销 | ~80 tokens |
+| 106 工具的 MySQL MCP Server | 54,600 tokens（仅初始化） |
+| 开发者实际场景 | 70-400 个工具规模 |
+
+关键问题在于：MCP 当前的设计是**全量预加载**——所有工具定义在会话开始时就注入 Context，即使你只用其中 2-3 个工具。
+
+如果一个 Skill 平台集成了多个 MCP Server，每个 Server 暴露几十个工具，Context 会被工具定义迅速填满，留给实际对话的空间反而被压缩。
+
+### 社区正在探索的方向
+
+**1. Lazy Tool Loading (LTAP)** — [GitHub Discussion #1945](https://github.com/modelcontextprotocol/specification/discussions/1945)
+
+核心思路：不再一次性加载所有工具 Schema，而是：
+- 会话开始时只加载压缩的关键词索引（每工具 ~4 tokens）
+- LLM 需要时再请求特定工具的完整 Schema
+- 任务完成后自动释放
+
+声称可实现 **82-182 倍**的 token 效率提升。
+
+**2. Primitive Groups** — [GitHub Discussion #1567](https://github.com/modelcontextprotocol/specification/discussions/1567)（83 票支持）
+
+思路：给工具分组，让 LLM 先选组再选工具，减少决策复杂度和 Context 占用。
+
+**3. 动态服务器管理** — [GitHub Discussion #2044](https://github.com/modelcontextprotocol/specification/discussions/2044)
+
+允许运行时 add/remove MCP Server，按需连接，用完断开。
+
+### 对 Skill 分发的启示
+
+这意味着 Server 态 MCP 方案需要额外考虑：
+
+1. **Skill 设计层面**：精简工具数量，合并相似功能，避免工具爆炸
+2. **平台层面**：实现工具的按需加载，而非全量注入
+3. **长期**：等待 MCP 协议层面的官方支持
+
+Context 膨胀不是致命问题，但确实是一个需要在架构设计阶段就考虑的约束。
+
 ## 更远的思考
 
 真正解决 AI Skill 分发问题，可能需要一个新的协议层：
