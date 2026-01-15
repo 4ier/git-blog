@@ -2,24 +2,53 @@
 layout: default
 ---
 
-<div class="post">
-  <h1 class="post-title">{{ page.title }}</h1>
-  <span class="post-date">{{ page.date | date_to_string }}</span>
-  {{ content }}
+<div class="post-wrapper">
+  <main class="post-main">
+    <article class="post" id="postContent">
+      <h1 class="post-title">{{ page.title }}</h1>
+      <span class="post-date">{{ page.date | date_to_string }}</span>
+      {{ content }}
+    </article>
+
+    <div class="related">
+      <h2>Related Posts</h2>
+      <ul class="related-posts">
+        {% for post in site.related_posts limit:3 %}
+          <li>
+            <h3>
+              <a href="{{ site.baseurl }}{{ post.url }}">
+                {{ post.title }}
+                <small>{{ post.date | date_to_string }}</small>
+              </a>
+            </h3>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+
+    <!-- 移动端批注展示区 -->
+    <div class="annotation-mobile">
+      <h3 class="annotation-sidebar-title">批注</h3>
+      <div class="annotation-list" id="annotationListMobile">
+        <div class="annotation-empty">暂无批注</div>
+      </div>
+    </div>
+
+    <!-- Giscus 评论区 -->
+    {% include giscus.html %}
+  </main>
+
+  <!-- 桌面端右侧批注栏 -->
+  <aside class="annotation-sidebar">
+    <h3 class="annotation-sidebar-title">批注</h3>
+    <div class="annotation-list" id="annotationList">
+      <div class="annotation-empty">暂无批注</div>
+    </div>
+  </aside>
 </div>
 
-<div class="related">
-  <h2>Related Posts</h2>
-  <ul class="related-posts">
-    {% for post in site.related_posts limit:3 %}
-      <li>
-        <h3>
-          <a href="{{ site.baseurl }}{{ post.url }}">
-            {{ post.title }}
-            <small>{{ post.date | date_to_string }}</small>
-          </a>
-        </h3>
-      </li>
-    {% endfor %}
-  </ul>
-</div>
+<!-- 批注 UI 组件 -->
+{% include annotation.html %}
+
+<!-- 批注功能脚本 -->
+<script src="{{ site.baseurl }}/public/js/annotation.js"></script>

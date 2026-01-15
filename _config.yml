@@ -26,3 +26,15 @@ github:
 twitter:             https://twitter.com/yangfourier
 
 excerpt_separator:  '<!-- more -->'
+
+# Giscus 批注系统配置
+giscus:
+  enabled: true
+  repo: "4ier/git-blog"
+  repo_id: "MDEwOlJlcG9zaXRvcnkxNDM1ODM4NTA="
+  category: "Announcements"
+  category_id: "DIC_kwDOCI7qas4C08qd"
+  mapping: "pathname"
+  reactions_enabled: true
+  theme: "preferred_color_scheme"
+  lang: "zh-CN"

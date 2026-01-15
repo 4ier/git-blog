@@ -1,0 +1,32 @@
+<!-- 浮动按钮 - 选中文本后显示 -->
+<div class="annotation-trigger" id="annotationTrigger">
+  <button class="btn-add-annotation" id="btnAddAnnotation">批注</button>
+</div>
+
+<!-- 批注编辑器模态框 -->
+<div class="annotation-editor-overlay" id="annotationEditorOverlay">
+  <div class="annotation-editor">
+    <div class="editor-header">
+      <h4 class="editor-title">添加批注</h4>
+      <button class="editor-close" id="editorClose" aria-label="关闭">&times;</button>
+    </div>
+    <div class="editor-body">
+      <div class="editor-quote">
+        <div class="editor-quote-label">引用内容</div>
+        <div class="editor-quote-text" id="editorQuoteText"></div>
+      </div>
+      <textarea
+        class="editor-input"
+        id="editorInput"
+        placeholder="写下你的批注，支持 Markdown 格式..."
+      ></textarea>
+      <div class="editor-hint">
+        支持 Markdown 语法 · Ctrl+Enter 提交
+      </div>
+    </div>
+    <div class="editor-footer">
+      <button class="btn-editor btn-cancel" id="editorCancel">取消</button>
+      <button class="btn-editor btn-submit" id="editorSubmit">提交批注</button>
+    </div>
+  </div>
+</div>
