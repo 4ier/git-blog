@@ -8,6 +8,8 @@ tags: [CLI, AI-Agent, GitHub, SaaS, Protocol, Developer-Tools]
 
 AI Agent 的崛起正在悄悄重塑一个古老的界面形态：命令行。这篇文章用 GitHub 数据论证这个趋势，分析案例，并提出一个可能的判断。
 
+![CLI Renaissance in the Agent Era](/git-blog/public/cli-renaissance.jpg)
+
 <!-- more -->
 
 ## 起因：一个直觉
