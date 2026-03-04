@@ -26,21 +26,26 @@ Cicada 想回答的问题是：**如果从零开始，只为一个智能体设�
 
 不是否定 OpenClaw，而是做一次减法实验。
 
-## 不是替代，是简化
+## 核心差异：模仿人 vs 做自己
 
-OpenClaw 的架构像一座大厦——多账号、多 agent、plugin 系统、channel 适配、配置继承链、sandbox 隔离、auth profile 轮换……每一层都有存在的理由，服务于不同规模的部署需求。
+OpenClaw 是一个成熟的 AI agent 平台。Heartbeat 自主巡检、cron 定时任务、sub-agent 编排、memory search、workspace 文件系统、context compaction——这些都是真正的 agent 能力。OpenClaw 在 agent-centric 的方向上已经走得很远。
 
-但如果你只想给**一个** agent 造一个家，你不需要大厦。你需要一间刚好合身的房间。
+但在交互层，OpenClaw 的核心设计哲学是**让 agent 表现得像人**：
 
-具体来说：
+- `HumanDelay` — 人工延迟回复（800-2500ms），模拟打字速度
+- `TypingMode` — "正在输入..." 指示器
+- `BlockStreamingCoalesce` — 消息合并，让回复节奏像人类对话
+- `SessionReset: daily` — 每天重置上下文，模拟"新的一天"
+- `updatePresence` — 在线状态，模拟人类的"在线/离开/忙碌"
+- `DmPolicy: pairing` — 先配对才能对话，模拟社交礼仪
 
-**配置复杂度。** OpenClaw 的配置有 5 层继承（全局 defaults → agent defaults → per-agent → per-session → runtime override），支持数十种 channel × 多账号 × agent binding 的排列组合。这对企业部署是必需的。但对于单 agent 场景，一个 `config.env` 文件就够了。
+这些设计的出发点是好的——在人类的社交平台上，agent 需要融入人类的交互预期。但方式是**削足适履**：让 agent 穿上人类的鞋。
 
-**抽象层数。** 一条消息从 Telegram 到达 agent，经过 channel plugin → monitor → message handler → session routing → agent scope → context building → LLM call。每一层都有明确职责，但调试时你得跨越 7 层抽象。Cicada 的路径是 Channel → Session → Agent，3 层。
+Agent 不需要假装在打字——它可以瞬间回复。Agent 不需要"每日重置"——它的记忆是硬悬崖式的，不是渐变遗忘。Agent 不需要在线状态——它要么在运行，要么不在。
 
-**记忆架构。** OpenClaw 的 session 有 compaction + memory flush + context pruning，解决了长对话的 token 管理。但 session 之间的记忆共享依赖 MEMORY.md 这样的手动机制。Cicada 用 Tape（全局日志）+ Identity（提纯认知）的两层结构，记忆天然跨 session。
+**这不是说这些功能没用。** 在很多场景下，让 agent 表现得像人是正确的产品决策。但它模糊了一个本质问题：agent 到底是什么？
 
-**身份演化。** OpenClaw 通过 workspace 文件（AGENTS.md、SOUL.md）注入身份。Cicada 也用文件，但 Identity 是系统的一等公民——agent 有专用的 `identity_write` 工具来演化自己的认知，Git 追踪每一次变更。
+Cicada 的回答是：**不要模仿人，做 agent 自己。** 然后找到让 agent 以自身真实形态融入人类世界的方式。
 
 ## Agent 是什么
 
