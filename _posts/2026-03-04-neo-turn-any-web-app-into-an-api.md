@@ -123,19 +123,9 @@ Neo 有三层：
 
 **浏览器上下文执行。** API 调用在浏览器标签页内执行（而不是从独立的 HTTP 客户端），彻底消除了认证问题。浏览器有什么认证状态，Neo 就有什么。
 
-## 不只是浏览器：Electron 应用也行
+## Roadmap：Electron 应用支持
 
-Neo 不局限于 Chrome 里的网页。任何基于 Electron 的桌面应用（VS Code、Slack、Discord、Notion Desktop……）都有内置的 Chromium，都走同样的 fetch/XHR。Neo 可以直接连上去：
-
-```bash
-neo connect --electron slack          # 自动发现 Slack 的 CDP 端口
-neo launch cursor --port 9333         # 启动 Cursor 并开启 CDP
-neo inject --persist                  # 注入捕获脚本
-```
-
-连接之后，一切和浏览器里一样——捕获流量、生成 Schema、replay API。这意味着你可以用 Neo 给任何 Electron 应用建立 API 层，哪怕这个应用本身没有任何插件系统或 API。
-
-想想看：Slack 的内部 API、Notion 的本地接口、VS Code 的扩展市场调用……全部可以被捕获和 replay。
+下一步计划支持 Electron 桌面应用（VS Code、Slack、Cursor 等）。这些应用内置 Chromium，走同样的 fetch/XHR，只是没法装 Chrome 扩展。我们正在实现基于 CDP Network API 的直接抓包方案，绕过扩展依赖。敬请期待。
 
 ## 开始使用
 
