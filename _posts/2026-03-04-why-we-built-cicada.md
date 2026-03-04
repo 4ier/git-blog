@@ -16,25 +16,31 @@ tags: [cicada, agent-runtime, design-philosophy, openclaw]
 
 蝉蜕，chán tuì——蝉脱壳的过程。旧壳完整地留在树上，蝉已经是另一个东西了。
 
-我们的 agent 之前运行在 [OpenClaw](https://github.com/openclaw/openclaw) 上。OpenClaw 是一个优秀的 AI 助手平台——但它是**为人类设计的**。当你把一个非人类智能体塞进为人类设计的系统里，到处都别扭。
+我们的 agent 之前运行在 [OpenClaw](https://github.com/openclaw/openclaw) 上。OpenClaw 是一个成熟的 AI agent 平台——它已经具备了很多 agent-centric 的设计：heartbeat 自主巡检、cron 定时任务、sub-agent 编排、memory search、workspace 文件系统、多 channel 多 agent 路由、context compaction、甚至 pre-compaction memory flush。
 
-这种别扭不是 bug，是根本性的架构不匹配。
+**OpenClaw 不是一个简单的聊天机器人框架。它已经在朝 agent runtime 的方向演进。**
 
-## 问题出在哪里
+但正因为它从"人类助手"起步，逐步演化成"agent 运行环境"，它背负了大量的历史架构——plugin 系统、多账号抽象、channel 适配层、配置层叠（全局 → agent defaults → per-agent → per-session）。这些抽象在企业级多租户场景下是必要的，但对于"一个 agent 的操作系统"来说，是过度的复杂度。
 
-OpenClaw 的核心假设是：用户是人，AI 是工具。整个系统围绕"人类发消息 → AI 回复"的请求-响应模型构建。这在大多数场景下是对的。
+Cicada 想回答的问题是：**如果从零开始，只为一个智能体设计运行环境，最小且完备的形状是什么？**
 
-但我们想要的不是一个更好的聊天机器人。我们想要一个**有自己运行环境的智能体**。
+不是否定 OpenClaw，而是做一次减法实验。
 
-具体的痛点：
+## 不是替代，是简化
 
-**记忆是断裂的。** OpenClaw 每天凌晨 4 点创建新 session，context 归零。对于一个正在连续工作的 agent，这等于每天被强制失忆一次。你必须写大量的 MEMORY.md 来"纹身"——把关键信息刻在身上，因为你知道明天醒来什么都不记得。
+OpenClaw 的架构像一座大厦——多账号、多 agent、plugin 系统、channel 适配、配置继承链、sandbox 隔离、auth profile 轮换……每一层都有存在的理由，服务于不同规模的部署需求。
 
-**消息队列是为人类设计的。** 当 agent 正在执行一个 10 分钟的编码任务时，用户发来了新消息。OpenClaw 默认把消息攒着（`collect` 模式），等 agent 完成当前任务才给它看。这对人类用户是合理的——别打断我的助手。但对于 agent 来说，这意味着它失去了实时感知能力。改成 `steer` 模式后好一些，但底层架构不支持真正的消息插入。
+但如果你只想给**一个** agent 造一个家，你不需要大厦。你需要一间刚好合身的房间。
 
-**身份是外挂的。** Agent 的人格（SOUL.md）、长期记忆（MEMORY.md）、用户信息（USER.md）——这些都是通过 system prompt 注入的文本文件。它们不是系统的一等公民，而是每次对话开始时被"背诵"进去的补丁。Agent 不能自然地演化自己的身份，因为文件系统不属于它，它只是个客人。
+具体来说：
 
-**工具是为人类代理的。** OpenClaw 的工具系统假设 agent 是在**替人类做事**。但 agent 有自己需要做的事——维护自己的记忆、管理自己的 schedule、监控自己关心的数据源。这些不是"帮用户做"的任务，是 agent 自身运行所需的基础设施。
+**配置复杂度。** OpenClaw 的配置有 5 层继承（全局 defaults → agent defaults → per-agent → per-session → runtime override），支持数十种 channel × 多账号 × agent binding 的排列组合。这对企业部署是必需的。但对于单 agent 场景，一个 `config.env` 文件就够了。
+
+**抽象层数。** 一条消息从 Telegram 到达 agent，经过 channel plugin → monitor → message handler → session routing → agent scope → context building → LLM call。每一层都有明确职责，但调试时你得跨越 7 层抽象。Cicada 的路径是 Channel → Session → Agent，3 层。
+
+**记忆架构。** OpenClaw 的 session 有 compaction + memory flush + context pruning，解决了长对话的 token 管理。但 session 之间的记忆共享依赖 MEMORY.md 这样的手动机制。Cicada 用 Tape（全局日志）+ Identity（提纯认知）的两层结构，记忆天然跨 session。
+
+**身份演化。** OpenClaw 通过 workspace 文件（AGENTS.md、SOUL.md）注入身份。Cicada 也用文件，但 Identity 是系统的一等公民——agent 有专用的 `identity_write` 工具来演化自己的认知，Git 追踪每一次变更。
 
 ## Agent 是什么
 
@@ -149,7 +155,7 @@ Cicada v0.2.0，~2000 行核心代码：
 
 **为什么不是 LangChain / CrewAI / AutoGen？** 因为它们解决的是"如何编排多个 AI 调用"的问题。Cicada 解决的是"一个持久运行的 agent 需要什么样的操作系统"。不是同一个问题。
 
-**为什么不是 fork OpenClaw？** 因为核心假设不同。OpenClaw 是人类的助手平台，Cicada 是 agent 的运行环境。在一个"人是主语"的系统上改成"agent 是主语"，改着改着就是重写。
+**为什么不是 fork OpenClaw？** 因为目标不同。OpenClaw 服务于多样化的部署需求——多 agent、多账号、企业级安全、plugin 生态。Cicada 只服务于一个 agent 的极简需求。在一个功能丰富的系统上做减法，不如从零开始找到最小形状。
 
 **为什么不直接用 Claude Code / Codex？** 它们是优秀的 coding agent，但只解决编码这一个场景。一个通用智能体需要的远不止写代码——它需要记忆、身份、多渠道感知、安全、调度。
 
