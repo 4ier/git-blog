@@ -1,59 +1,59 @@
 ---
 layout: post
-title: "Neo: Turn Any Web App Into an API"
+title: "Neo：把任意 Web App 变成 API"
 date: 2026-03-04
 categories: [ai-agent]
 tags: [neo, chrome-extension, api-discovery, browser-automation, ai-tools]
 ---
 
-![Neo - Turn Any Web App Into an API](/git-blog/public/neo-header.png)
+每个 Web App 都已经有一套完整的 API——前端每次点击按钮时都在调用它。Neo 捕获这些调用，让你或 AI 直接 replay。
 
-Every web app already has a complete API. The frontend calls it every time you click a button. Neo captures those calls and makes them replayable — by you or by AI.
+![Neo](/git-blog/public/neo-header.png)
 
 <!-- more -->
 
-## The Problem Nobody Solved
+## 一个没人解决好的问题
 
-AI agents operating web apps today have two options, both terrible:
+AI Agent 操作网页，目前只有两条路，都不好走：
 
-**Official APIs** — Most SaaS doesn't have one. The ones that do expose maybe 10% of actual functionality. Want to do something the API doesn't support? Too bad.
+**官方 API** —— 大多数 SaaS 没有。有的也只暴露实际功能的 10%。想做 API 不支持的事？没办法。
 
-**Browser automation** — Screenshot the page. OCR the text. Find the button coordinates. Click. Wait. Screenshot again. Repeat. It's slow, fragile, and breaks every time the UI changes. A `200ms` API call becomes a `5-second` screenshot-parse-click cycle.
+**浏览器自动化** —— 截图，OCR 识别文字，找到按钮坐标，点击，等待，再截图。一个 200ms 的 API 调用变成 5 秒的截图-解析-点击循环。慢、脆弱，每次 UI 改版就全部崩掉。
 
-This is the state of the art in 2026. Billions of dollars of AI infrastructure, and we're still taking screenshots of web pages like it's 2015 Selenium.
+2026 年了，几十亿美金的 AI 基础设施，我们还在像 2015 年写 Selenium 一样截网页的图。
 
-## The Third Way
+## 第三条路
 
-Here's the insight: **the browser already knows every API call**. When you click "Post" on Twitter, your browser sends a `POST /i/api/graphql/.../CreateTweet` with your auth headers, CSRF token, and the tweet body. That's the real API. It's complete, authenticated, and battle-tested — because it's what the actual product uses.
+核心洞察：**浏览器已经知道每一个 API 调用**。你在 Twitter 上点「发推」，浏览器发出 `POST /i/api/graphql/.../CreateTweet`，带着认证头、CSRF token 和推文内容。这就是真正的 API——完整、已认证、经过实战检验，因为这就是产品自己在用的。
 
-Neo sits in the browser and watches. Every `fetch()`, every `XMLHttpRequest`, every WebSocket message — captured with full headers, bodies, timing, and even which DOM element triggered the call.
+Neo 坐在浏览器里静静观察。每个 `fetch()`、每个 `XMLHttpRequest`、每条 WebSocket 消息——URL、请求头、请求/响应体、耗时，甚至是哪个 DOM 元素触发了这次调用，全部捕获。
 
 ```
-Browse normally → Neo records all API traffic → Schema auto-generated → AI replays APIs directly
+正常浏览 → Neo 记录所有 API 流量 → 自动生成 Schema → AI 直接调用 API
 ```
 
-No reverse-engineering. No documentation reading. No API key applications. Just use the app, and Neo learns how it works.
+不用逆向工程，不用读文档，不用申请 API key。正常用网站，Neo 自己学会它怎么工作。
 
-## How It Works
+## 怎么用
 
-### 1. Passive Capture
+### 1. 被动捕获
 
-Install the Chrome extension. Browse normally. Neo records everything in the background — URLs, headers, request/response bodies, status codes, timing. It even tracks which button click triggered which API call (a 2-second correlation window maps DOM events to network requests).
+装上 Chrome 扩展，正常浏览。Neo 在后台默默记录一切——URL、请求头、请求/响应体、状态码、耗时。它甚至能追踪是哪个按钮的点击触发了哪个 API 调用（2 秒的时间窗口做 DOM 事件和网络请求的关联）。
 
 ```bash
 neo capture search "CreateTweet" --method POST
 # Found: POST /i/api/graphql/a1p9RWp.../CreateTweet (x-csrf-token required)
 ```
 
-### 2. Schema Generation
+### 2. Schema 生成
 
-Run one command and Neo distills all captures for a domain into a structured API schema: endpoints, auth headers, parameter patterns, response shapes, error codes.
+一条命令，Neo 把某个域名的所有捕获提炼成结构化的 API Schema：端点、认证头、参数模式、响应结构、错误码。
 
 ```bash
 neo schema generate x.com
 ```
 
-The schema output shows which UI elements trigger which APIs and which fields vary:
+Schema 输出会展示哪些 UI 元素触发了哪些 API，以及哪些字段是变化的：
 
 ```
 POST /i/api/graphql/:hash/CreateTweet  (12x, 340ms) [auth: x-csrf-token]
@@ -61,86 +61,86 @@ POST /i/api/graphql/:hash/CreateTweet  (12x, 340ms) [auth: x-csrf-token]
   ← click button.tweet-btn "Post" (8x)
 ```
 
-That last line is the magic — it maps **user intent → UI element → API call → parameterizable fields**. An AI agent reading this schema knows exactly how to post a tweet without ever seeing the Twitter UI.
+最后一行是关键——它映射了 **用户意图 → UI 元素 → API 调用 → 可参数化字段**。AI Agent 读完这个 Schema，就知道怎么发推，根本不需要看到 Twitter 的界面。
 
 ### 3. Replay
 
-Execute API calls inside the browser tab's context via Chrome DevTools Protocol. Cookies, CSRF tokens, session auth — all inherited automatically.
+API 调用在浏览器标签页的上下文中执行，通过 Chrome DevTools Protocol。Cookie、CSRF token、Session 认证——全部自动继承。
 
 ```bash
-# Smart call: schema lookup + auto-auth + auto tab selection
+# 智能调用：Schema 查找 + 自动认证 + 自动选择标签页
 neo api x.com CreateTweet --body '{"variables":{"tweet_text":"hello from neo"}}'
 
-# Or replay a specific captured call
+# 或者 replay 一个之前捕获的调用
 neo replay <capture-id> --tab x.com
 ```
 
-No token management. No OAuth flows. If you're logged in, Neo is logged in.
+不用管 Token，不用走 OAuth 流程。你登录了，Neo 就登录了。
 
-## v2: When There's No API, Drive the UI
+## v2：没有 API 的时候，驱动 UI
 
-Some actions don't have clean API endpoints. Complex multi-step wizards, drag-and-drop interfaces, canvas-based editors. For these, Neo v2 added an accessibility-tree-based UI automation layer:
+有些操作没有干净的 API 端点——复杂的多步向导、拖拽界面、Canvas 编辑器。对于这些场景，Neo v2 加入了基于无障碍树的 UI 自动化层：
 
 ```bash
-neo snapshot              # Get the a11y tree with @ref mapping
-neo click @14             # Click element by reference
-neo fill @7 "hello"       # Fill an input field
-neo press Enter           # Keyboard input
-neo screenshot            # Visual capture
+neo snapshot              # 获取无障碍树，带 @ref 映射
+neo click @14             # 通过引用点击元素
+neo fill @7 "hello"       # 填充输入框
+neo press Enter           # 键盘输入
+neo screenshot            # 截图
 ```
 
-One tool, both layers. When an API exists, use it directly (fast, reliable). When it doesn't, Neo can drive the UI through the same CLI. The agent doesn't need to decide which approach to use — it has both available.
+一个工具，两个层面。有 API 就直接调（快、稳），没有 API 就驱动 UI。Agent 不需要纠结用哪种方式——两种都有。
 
-## What This Enables
+## 能做什么
 
-**For AI agents**: Instead of the screenshot→OCR→click loop, agents call APIs directly. A task that took 30 seconds of browser automation takes 200ms of API calls. More reliable, too — API contracts are stabler than pixel positions.
+**给 AI Agent 用**：不再截图→OCR→点击，直接调 API。30 秒的浏览器自动化变成 200ms 的 API 调用。更快，也更稳——API 契约比像素位置稳定得多。
 
-**For developers**: Instant API documentation for any web app. No more digging through Network tabs manually. `neo schema show` gives you the full API map, and `neo schema openapi` exports it as OpenAPI 3.0 for Postman or code generators.
+**给开发者用**：任意 Web App 的即时 API 文档。不用再手动翻 Network 面板。`neo schema show` 给你完整的 API 地图，`neo schema openapi` 导出 OpenAPI 3.0 格式，直接用 Postman 或代码生成器。
 
-**For automation**: `neo workflow discover` finds multi-step API sequences (login → fetch data → submit form) and makes them replayable as a single command.
+**给自动化用**：`neo workflow discover` 发现多步 API 序列（登录→获取数据→提交表单），一条命令 replay。
 
-**For debugging**: `neo capture watch` gives you a real-time tail of all API traffic. `neo flows` shows call sequence patterns. `neo deps` traces data flow between API responses and subsequent requests.
+**给调试用**：`neo capture watch` 实时查看所有 API 流量。`neo flows` 展示调用序列模式。`neo deps` 追踪 API 响应和后续请求之间的数据流。
 
-## The Architecture
+## 架构
 
-Neo has three layers:
+Neo 有三层：
 
-1. **Chrome Extension** — Passive capture. Intercepts all network traffic via `chrome.webRequest` and `chrome.debugger`. Tracks DOM trigger correlation. Stores captures per-domain (500 cap, auto-cleanup).
+1. **Chrome 扩展** —— 被动捕获。通过 `chrome.webRequest` 和 `chrome.debugger` 拦截所有网络流量。追踪 DOM 触发关联。按域名存储捕获记录（500 条上限，自动清理）。
 
-2. **CLI** — The interface. Query captures, generate schemas, execute calls, analyze patterns. Everything goes through `neo <command>`.
+2. **CLI** —— 交互界面。查询捕获、生成 Schema、执行调用、分析模式。所有操作通过 `neo <command>`。
 
-3. **CDP Bridge** — Execution layer. API calls run inside the browser tab's JavaScript context via Chrome DevTools Protocol. This is what makes auth inheritance work — the call runs as if the page itself made it.
+3. **CDP Bridge** —— 执行层。API 调用在浏览器标签页的 JavaScript 上下文中运行，通过 Chrome DevTools Protocol。这就是为什么认证继承能 work——调用就像是页面自己发出的。
 
-The extension also supports a WebSocket bridge (`neo bridge`) for real-time streaming — useful for monitoring or piping to other tools.
+扩展还支持 WebSocket Bridge（`neo bridge`）做实时流式传输，适合监控或者管道到其他工具。
 
-## Design Decisions
+## 设计决策
 
-**Passive over active.** Neo doesn't inject scripts that modify page behavior. It observes from the extension layer. This means it works on any website without triggering anti-bot detection.
+**被动优于主动。** Neo 不注入修改页面行为的脚本。它在扩展层观察。这意味着它在任何网站上都能工作，不会触发反 bot 检测。
 
-**Local-first.** All captures and schemas stay on your machine. No cloud, no telemetry. Your browsing patterns are your data.
+**本地优先。** 所有捕获和 Schema 都存在本机。没有云端，没有遥测。你的浏览模式是你自己的数据。
 
-**Schema as knowledge.** The generated schemas are persistent API knowledge bases. An AI agent can read a schema file and understand a web app's entire API surface without making a single request first.
+**Schema 即知识。** 生成的 Schema 是持久化的 API 知识库。AI Agent 读完一个 Schema 文件，就能理解一个 Web App 的整个 API 面，不需要先发任何请求。
 
-**Browser context execution.** Running API calls inside the browser tab (instead of from a separate HTTP client) eliminates the entire auth problem. Whatever auth state the browser has, Neo has.
+**浏览器上下文执行。** API 调用在浏览器标签页内执行（而不是从独立的 HTTP 客户端），彻底消除了认证问题。浏览器有什么认证状态，Neo 就有什么。
 
-## Getting Started
+## 开始使用
 
 ```bash
 git clone https://github.com/4ier/neo.git
 cd neo && npm install && npm run build
-npm link  # makes `neo` available globally
+npm link  # 全局可用 neo 命令
 ```
 
-Load the extension in Chrome (developer mode → load unpacked → `extension/dist/`), browse any website, and you're capturing.
+在 Chrome 中加载扩展（开发者模式 → 加载已解压的扩展 → `extension/dist/`），浏览任何网站，就开始捕获了。
 
 ```bash
-neo status                    # What do we know?
-neo schema generate x.com     # Build the API map
-neo api x.com HomeTimeline    # Call it
+neo status                    # 看看我们知道什么
+neo schema generate x.com     # 生成 API 地图
+neo api x.com HomeTimeline    # 调用
 ```
 
-That's it. Three commands from zero to calling Twitter's internal API.
+三条命令，从零到调用 Twitter 内部 API。
 
 ---
 
-Neo is open source at [github.com/4ier/neo](https://github.com/4ier/neo). We just hit 100 ⭐ — thanks to everyone who found it useful. If you're building AI agents that interact with web apps, give it a try. The screenshot-and-click era is over.
+Neo 开源在 [github.com/4ier/neo](https://github.com/4ier/neo)，刚刚突破 100 ⭐。如果你在做需要和 Web App 交互的 AI Agent，试试看。截图点击的时代该结束了。
