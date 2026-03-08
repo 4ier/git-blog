@@ -235,4 +235,4 @@ OpenClaw 的 open issues 增长：
 
 *这是 OpenClaw 系列的第二篇。第一篇：[从 288 行到 288,000 行：OpenClaw 的 98 天架构腐败史](/git-blog/ai-agent/2026/03/01/openclaw-architectural-decay-timeline/)*
 
-*数据来源：OpenClaw v2026.3.7 源码静态分析（跨模块 import 解析），GitHub Issues API（issue/regression 计数），作者实际运行 OpenClaw 的 incident report（[#39010](https://github.com/openclaw/openclaw/issues/39010)）。分析代码和原始数据可在 [4ier/openclaw-analysis](https://github.com/4ier) 获取。*
+*数据来源：OpenClaw v2026.3.7 源码静态分析（跨模块 import 解析），GitHub Issues API（issue/regression 计数），作者实际运行 OpenClaw 的 incident report（[#39010](https://github.com/openclaw/openclaw/issues/39010)）。*
