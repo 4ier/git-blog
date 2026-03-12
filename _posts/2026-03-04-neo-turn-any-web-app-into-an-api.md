@@ -123,9 +123,29 @@ Neo 有三层：
 
 **浏览器上下文执行。** API 调用在浏览器标签页内执行（而不是从独立的 HTTP 客户端），彻底消除了认证问题。浏览器有什么认证状态，Neo 就有什么。
 
-## Roadmap：Electron 应用支持
+## Electron 桌面应用支持
 
-下一步计划支持 Electron 桌面应用（VS Code、Slack、Cursor 等）。这些应用内置 Chromium，走同样的 fetch/XHR，只是没法装 Chrome 扩展。我们正在实现基于 CDP Network API 的直接抓包方案，绕过扩展依赖。敬请期待。
+Neo 现在支持 Electron 桌面应用——VS Code、Slack、Discord、Cursor，任何基于 Electron 的应用都行。这些应用内置 Chromium，走同样的 fetch/XHR，Neo 通过 CDP 直接连接，不依赖 Chrome 扩展。
+
+```bash
+# 启动 VS Code 并自动连接
+neo launch code --port 9230
+neo snapshot                # 看到 VS Code 的无障碍树
+neo click @14               # 点击菜单项
+
+# 或者连接已经在运行的 Electron 应用
+neo connect --electron slack
+
+# 注入 Neo 捕获脚本
+neo inject --persist        # 页面导航后仍然生效
+```
+
+Session 自动管理，可以在多个应用之间切换：
+
+```bash
+neo --session vscode snapshot
+neo --session chrome api x.com HomeTimeline
+```
 
 ## 开始使用
 
@@ -147,4 +167,4 @@ neo api x.com HomeTimeline    # 调用
 
 ---
 
-Neo 开源在 [github.com/4ier/neo](https://github.com/4ier/neo)，刚刚突破 100 ⭐。如果你在做需要和 Web App 交互的 AI Agent，试试看。截图点击的时代该结束了。
+Neo 开源在 [github.com/4ier/neo](https://github.com/4ier/neo)，已突破 550 ⭐。如果你在做需要和 Web App 交互的 AI Agent，试试看。截图点击的时代该结束了。
